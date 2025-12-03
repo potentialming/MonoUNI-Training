@@ -10,7 +10,7 @@ Visualize KITTI 3D boxes with a given ground plane (denorm) and render the groun
 - Draws a grid on the plane to help verify plane correctness
 
 Usage:
-  python scripts/visualize_with_denorm.py --kitti-root /home/liming/datasets/Rope3D_mini_kitti --demo-dir ./output/vis_denorm/rope3d_mini_kitti
+  python scripts/visualize_with_denorm.py --kitti-root ./datasets/Rope3D_mini_kitti --demo-dir ./output/vis_denorm/rope3d_mini_kitti
 
 Optional:
   --denorm-dir /custom/denorm/dir

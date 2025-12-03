@@ -186,7 +186,7 @@ def visual_results(data_root, results_dir, output_dir, show_gt=False, max_images
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Visualize MonoUNI detection results")
     parser.add_argument("--data-root", type=str,
-                        default="/home/liming/datasets/dair-v2x-i-kitti",
+                        default="./datasets/dair-v2x-i-kitti",
                         help="Path to KITTI format dataset root")
     parser.add_argument("--results-dir", type=str,
                         required=True,

@@ -2,7 +2,7 @@ random_seed: 414
 
 dataset:
   type: 'kitti'
-  root_dir: '/home/liming/datasets/dair-v2x-i-kitti'
+  root_dir: './datasets/dair-v2x-i-kitti'
   batch_size: 8
   class_merging: False
   use_dontcare: False
@@ -57,4 +57,4 @@ tester:
   use_roi_filter: False  # KITTI dataset does not have ROI mask
   threshold: 0.2  # confidence filter
   out_dir: 'output/dair-v2x-i-kitti/eval'
-  resume_model: '/home/liming/workspace/MonoUNI/checkpoints/dair_v2x_i_epoch_150.pth'
+  resume_model: './checkpoints/dair_v2x_i_epoch_150.pth'

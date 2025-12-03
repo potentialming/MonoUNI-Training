@@ -48,7 +48,7 @@ def kitti_visual_tool(data_root, demo_dir):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Dataset in KITTI format Checking ...")
     parser.add_argument("--data_root", type=str,
-                        default="/home/liming/datasets/dair-v2x-i-kitti",
+                        default="./datasets/dair-v2x-i-kitti",
                         help="Path to Dataset root in KITTI format")
     parser.add_argument("--demo_dir", type=str,
                         default="./demo_kitti_visual",

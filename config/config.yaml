@@ -2,7 +2,7 @@ random_seed: 414
 
 dataset:
   type: 'rope3d'
-  root_dir: '/home/liming/datasets/rope3d'
+  root_dir: './datasets/rope3d'
   batch_size: 8
   class_merging: False
   use_dontcare: False
