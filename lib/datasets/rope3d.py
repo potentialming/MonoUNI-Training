@@ -318,13 +318,13 @@ class Rope3D(data.Dataset):
             offset_3d = np.zeros((self.max_objs, 2), dtype=np.float32)
             cls_ids = np.zeros((self.max_objs), dtype=np.int64)
             indices = np.zeros((self.max_objs), dtype=np.int64)
-            mask_2d = np.zeros((self.max_objs), dtype=np.bool)
+            mask_2d = np.zeros((self.max_objs), dtype=bool)
             depth_bin_ind = np.zeros((self.max_objs, 5), dtype=np.int64)
 
 
             vis_depth = np.zeros((self.max_objs, 5, 7, 7), dtype=np.float32)
             att_depth = np.zeros((self.max_objs, 5, 7, 7), dtype=np.float32)
-            depth_mask = np.zeros((self.max_objs,5, 7, 7), dtype=np.bool)
+            depth_mask = np.zeros((self.max_objs,5, 7, 7), dtype=bool)
 
 
             object_num = len(objects) if len(objects) < self.max_objs else self.max_objs
@@ -385,7 +385,7 @@ class Rope3D(data.Dataset):
                 height_ori = y2_ori - y1_ori
             
                 vis_depth_roi_new = np.zeros((7, 7), dtype=np.float32)
-                depth_mask_roi_new = np.ones((7, 7), dtype=np.bool)
+                depth_mask_roi_new = np.ones((7, 7), dtype=bool)
                 tan_roi = np.zeros((7, 7), dtype=np.float32)
                 w_stride = width_ori / 7
                 h_stride = height_ori / 7
@@ -628,7 +628,7 @@ if __name__ == '__main__':
         # test image
         img = inputs[0].numpy().transpose(1, 2, 0)
         img = (img * dataset.std + dataset.mean) * 255
-        img = Image.fromarray(img.astype(np.bool))
+        img = Image.fromarray(img.astype(bool))
         img.show()
         # print(targets['size_3d'][0][0])
 

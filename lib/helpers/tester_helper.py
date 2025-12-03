@@ -15,9 +15,19 @@ class Tester(object):
         # for eval
         self.eval_cls = cfg['dataset']['eval_cls']
         self.root_dir = cfg['dataset']['root_dir']
-        self.label_dir = os.path.join(self.root_dir, 'label_2_4cls_filter_with_roi_for_eval')
-        self.calib_dir = os.path.join(self.root_dir, 'calib')
-        self.de_norm_dir = os.path.join(self.root_dir, 'denorm')
+        
+        # 根据数据集类型设置label目录
+        dataset_type = cfg['dataset'].get('type', 'rope3d').lower()
+        if dataset_type == 'kitti':
+            # KITTI格式: training/label_2
+            self.label_dir = os.path.join(self.root_dir, 'training', 'label_2')
+            self.calib_dir = os.path.join(self.root_dir, 'training', 'calib')
+            self.de_norm_dir = os.path.join(self.root_dir, 'training', 'denorm')
+        else:
+            # ROPE3D格式
+            self.label_dir = os.path.join(self.root_dir, 'label_2_4cls_filter_with_roi_for_eval')
+            self.calib_dir = os.path.join(self.root_dir, 'calib')
+            self.de_norm_dir = os.path.join(self.root_dir, 'denorm')
         self.model = model
         self.data_loader = data_loader
         self.logger = logger
@@ -74,6 +84,9 @@ class Tester(object):
         self.save_results(results,out_dir)
         progress_bar.close()
         # return 0
+        # 获取use_roi_filter配置,默认为True(兼容原有行为)
+        use_roi_filter = self.cfg.get('use_roi_filter', True)
+        
         Car_res = eval.do_repo3d_eval(
             self.logger,
             self.label_dir,
@@ -81,7 +94,8 @@ class Tester(object):
             self.calib_dir,
             self.de_norm_dir,
             self.eval_cls,
-            ap_mode=40)
+            ap_mode=40,
+            use_roi_filter=use_roi_filter)
         return Car_res
 
     def save_results(self, results, output_dir='./outputs'):

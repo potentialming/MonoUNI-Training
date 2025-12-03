@@ -375,7 +375,10 @@ def clean_data(gt_anno, dt_anno, current_class, difficulty):
     MAX_OCCLUSION = [0, 1, 2]
     MAX_TRUNCATION = [0.15, 0.3, 0.5]
     dc_bboxes, ignored_gt, ignored_dt = [], [], []
-    current_cls_name = CLASS_NAMES[current_class].lower()
+    if isinstance(current_class, str):
+        current_cls_name = current_class.lower()
+    else:
+        current_cls_name = CLASS_NAMES[current_class].lower()
     num_gt = len(gt_anno["name"])
     num_dt = len(dt_anno["name"])
     num_valid_gt = 0
@@ -1093,28 +1096,31 @@ def get_official_eval_result(gt_annos,
                               [0.3, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25],
                               [0.3, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]])
     min_overlaps = np.stack([overlap_mod, overlap_easy, overlap_easy2], axis=0)
-    class_to_name = {
-        0: 'car',
-        1: 'van',
-        2: 'bus',
-        3: 'truck',
-        4: 'cyclist',
-        5: 'motorcyclist',
-        6: 'tricyclist',
-        7: 'pedestrian',
-    }
-    # 'car','van','truck','bus','pedestrian','cyclist','motorcyclist', 'tricyclist'
-    name_to_class = {v: n for n, v in class_to_name.items()}
+    
+    # 动态生成类别映射 - 从传入的类别列表构建
     if not isinstance(current_classes, (list, tuple)):
         current_classes = [current_classes]
-    current_classes_int = []
-    for curcls in current_classes:
+    
+    # 如果传入的是字符串类别名，直接使用；如果是整数ID，需要映射
+    current_classes_str = []
+    current_classes_pass = []  # 传递给 do_eval_v3 的类别（字符串或整数）
+    for i, curcls in enumerate(current_classes):
         if isinstance(curcls, str):
-            current_classes_int.append(name_to_class[curcls])
+            current_classes_str.append(curcls)
+            current_classes_pass.append(curcls)  # 直接传递字符串
         else:
-            current_classes_int.append(curcls)
-    current_classes = current_classes_int
-    min_overlaps = min_overlaps[:, :, current_classes]
+            current_classes_str.append(str(curcls))
+            current_classes_pass.append(curcls)  # 传递整数
+    
+    # 构建动态映射
+    class_to_name = {i: name for i, name in enumerate(current_classes_str)}
+    # 对于字符串类别，min_overlaps 使用前 N 个类别的阈值
+    if all(isinstance(c, str) for c in current_classes_pass):
+        num_classes = len(current_classes_pass)
+        min_overlaps = min_overlaps[:, :, :num_classes]
+    else:
+        min_overlaps = min_overlaps[:, :, current_classes_pass]
+    current_classes = current_classes_pass
     result = ''
     # check whether alpha is valid
     compute_aos = False
@@ -1136,7 +1142,7 @@ def get_official_eval_result(gt_annos,
     for j, curcls in enumerate(current_classes):
         # mAP threshold array: [num_minoverlap, metric, class]
         # mAP result: [num_class, num_diff, num_minoverlap]
-        class_name = class_to_name[curcls]
+        class_name = class_to_name[j]
         detail[class_name] = {}
         for i in range(min_overlaps.shape[0]):
             mAPbbox = get_mAP(metrics["bbox"]["precision"][j, :, i])
@@ -1147,7 +1153,7 @@ def get_official_eval_result(gt_annos,
             detail[class_name][f"3d@{min_overlaps[i, 2, j]:.2f}"] = mAP3d.tolist()
 
             result += print_str(
-                (f"{class_to_name[curcls]} "
+                (f"{class_to_name[j]} "
                  "AP(Average Precision)@{:.2f}, {:.2f}, {:.2f}:".format(*min_overlaps[i, :, j])))
             mAPbbox = ", ".join(f"{v:.2f}" for v in mAPbbox)
             mAPbev = ", ".join(f"{v:.2f}" for v in mAPbev)
@@ -1171,46 +1177,44 @@ def get_coco_eval_result(gt_annos,
                          current_classes,
                          z_axis=1,
                          z_center=1.0):
-    class_to_name = {
-        0: 'car',
-        1: 'van',
-        2: 'truck',
-        3: 'bus',
-        4: 'pedestrian',
-        5: 'cyclist',
-        6: 'motorcyclist',
-        7: 'tricyclist',
-    }
-    class_to_range = {
-        0: [0.5, 1.0, 0.05],
-        1: [0.25, 0.75, 0.05],
-        2: [0.25, 0.75, 0.05],
-        3: [0.5, 1.0, 0.05],
-        4: [0.25, 0.75, 0.05],
-        5: [0.5, 1.0, 0.05],
-        6: [0.5, 1.0, 0.05],
-        7: [0.5, 1.0, 0.05],
-    }
-    class_to_range = {
-        0: [0.5, 0.95, 10],
-        1: [0.25, 0.7, 10],
-        2: [0.25, 0.7, 10],
-        3: [0.5, 0.95, 10],
-        4: [0.25, 0.7, 10],
-        5: [0.5, 0.95, 10],
-        6: [0.5, 0.95, 10],
-        7: [0.5, 0.95, 10],
-    }
-
-    name_to_class = {v: n for n, v in class_to_name.items()}
+    # 动态生成类别映射
     if not isinstance(current_classes, (list, tuple)):
         current_classes = [current_classes]
+    
+    current_classes_str = []
     current_classes_int = []
-    for curcls in current_classes:
+    for i, curcls in enumerate(current_classes):
         if isinstance(curcls, str):
-            current_classes_int.append(name_to_class[curcls])
+            current_classes_str.append(curcls)
+            current_classes_int.append(i)
         else:
             current_classes_int.append(curcls)
+            current_classes_str.append(str(curcls))
+    
+    # 动态生成类别映射
+    if not isinstance(current_classes, (list, tuple)):
+        current_classes = [current_classes]
+    
+    current_classes_str = []
+    current_classes_int = []
+    for i, curcls in enumerate(current_classes):
+        if isinstance(curcls, str):
+            current_classes_str.append(curcls)
+            current_classes_int.append(i)
+        else:
+            current_classes_int.append(curcls)
+            current_classes_str.append(str(curcls))
+    
+    class_to_name = {i: name for i, name in enumerate(current_classes_str)}
+    
+    # 动态设置overlap范围
+    class_to_range = {}
+    for i, name in class_to_name.items():
+        if 'car' in name.lower() or 'vehicle' in name.lower() or 'bus' in name.lower() or 'truck' in name.lower() or 'van' in name.lower():
+            class_to_range[i] = [0.5, 0.95, 10]
+        else:
+            class_to_range[i] = [0.25, 0.7, 10]
+    
     current_classes = current_classes_int
     overlap_ranges = np.zeros([3, 3, len(current_classes)])
     for i, curcls in enumerate(current_classes):
@@ -1234,13 +1238,13 @@ def get_coco_eval_result(gt_annos,
         z_center=z_center)
     detail = {}
     for j, curcls in enumerate(current_classes):
-        class_name = class_to_name[curcls]
+        class_name = class_to_name[j]
         detail[class_name] = {}
         # mAP threshold array: [num_minoverlap, metric, class]
         # mAP result: [num_class, num_diff, num_minoverlap]
         o_range = np.array(class_to_range[curcls])[[0, 2, 1]]
         o_range[1] = (o_range[2] - o_range[0]) / (o_range[1] - 1)
-        result += print_str((f"{class_to_name[curcls]} "
+        result += print_str((f"{class_to_name[j]} "
                              "coco AP@{:.2f}:{:.2f}:{:.2f}:".format(*o_range)))
         result += print_str((f"bbox AP:{mAPbbox[j, 0]:.2f}, "
                              f"{mAPbbox[j, 1]:.2f}, "
@@ -1327,29 +1331,180 @@ def eval_from_scrach(log_,gt_dir, det_dir, eval_cls_list=None, ap_mode=40):
     if AP_mode == 11:
         print('-' * 40 + 'AP11 evaluation' + '-' * 40)
 
-        # print('------------------evalute model: {}--------------------'.format(det_dir.split('/')[-3]))
     print('------------------evalute model: {}--------------------'.format(det_dir.split('/')[-2]))
 
-    eval_cls_list_ = ['car']
-    for cls in eval_cls_list_:
-        print('*' * 20 + cls + '*' * 20)
-        res = get_official_eval_result(all_gt, all_det, cls, z_axis=1, z_center=1)
-        Car_res = res['detail'][cls]
-        for k in Car_res.keys():
-            print(k, Car_res[k])
-        # cared_result.append(Car_res['3d@0.50'][1])
-        log_.info(str(Car_res))
-        print('\n')
-    # log_.info(str(cared_result))
-    return Car_res
+    # 存储所有类别的结果
+    all_class_results = {}
+    summary_3d_05 = {}  # 3D@0.5 汇总
+    summary_3d_07 = {}  # 3D@0.7 汇总
+    
+    # 遍历配置文件中的所有类别
+    for cls_name in eval_cls_list:
+        cls_lower = cls_name.lower()
+        print('\n' + '*' * 20 + f' {cls_name} ' + '*' * 20)
+        
+        # 检查该类别是否有GT或检测结果
+        has_gt = any((cls_name == gt['name']).any() or (cls_lower == gt['name']).any() for gt in all_gt)
+        has_det = any((cls_name == det['name']).any() or (cls_lower == det['name']).any() for det in all_det)
+        
+        if not has_gt and not has_det:
+            print(f'Skipping {cls_name}: No GT and no detections found')
+            log_.info(f'Skipping {cls_name}: No GT and no detections found')
+            continue
+        elif not has_gt:
+            print(f'Warning: {cls_name} has detections but no GT')
+            log_.info(f'Warning: {cls_name} has detections but no GT')
+            continue
+        elif not has_det:
+            print(f'Warning: {cls_name} has GT but no detections (AP will be 0)')
+            log_.info(f'Warning: {cls_name} has GT but no detections (AP will be 0)')
+            continue
+        
+        try:
+            res = get_official_eval_result(all_gt, all_det, [cls_lower], z_axis=1, z_center=1)
+            cls_res = res['detail'][cls_lower]
+            all_class_results[cls_name] = cls_res
+            
+            # 打印详细结果
+            for k in cls_res.keys():
+                print(k, cls_res[k])
+            log_.info(f'{cls_name} results: {str(cls_res)}')
+            
+            # 收集3D指标用于汇总
+            if '3d@0.50' in cls_res:
+                summary_3d_05[cls_name] = cls_res['3d@0.50'][1]  # moderate difficulty
+            if '3d@0.70' in cls_res:
+                summary_3d_07[cls_name] = cls_res['3d@0.70'][1]  # moderate difficulty
+                
+        except Exception as e:
+            print(f'Error evaluating {cls_name}: {str(e)}')
+            log_.info(f'Error evaluating {cls_name}: {str(e)}')
+            continue
+    
+    # 打印汇总结果 - 包含所有难度级别
+    print('\n' + '=' * 80)
+    print('3D Detection AP Summary')
+    print('=' * 80)
+    
+    # 收集所有难度的3D AP结果
+    summary_3d_07_all = {}  # {cls_name: [easy, moderate, hard]}
+    summary_3d_05_all = {}
+    
+    for cls_name, cls_res in all_class_results.items():
+        if '3d@0.70' in cls_res:
+            summary_3d_07_all[cls_name] = cls_res['3d@0.70']  # [easy, moderate, hard]
+        if '3d@0.50' in cls_res:
+            summary_3d_05_all[cls_name] = cls_res['3d@0.50']
+    
+    if summary_3d_07_all:
+        print('\n3D AP @ IoU=0.70:')
+        print(f'  {"Class":<15s}  {"Easy":>8s}  {"Moderate":>8s}  {"Hard":>8s}')
+        print('  ' + '-' * 50)
+        for cls_name, ap_list in summary_3d_07_all.items():
+            print(f'  {cls_name:<15s}  {ap_list[0]:>8.2f}  {ap_list[1]:>8.2f}  {ap_list[2]:>8.2f}')
+        log_.info(f'3D AP@0.70 Summary: {summary_3d_07_all}')
+    
+    if summary_3d_05_all:
+        print('\n3D AP @ IoU=0.50:')
+        print(f'  {"Class":<15s}  {"Easy":>8s}  {"Moderate":>8s}  {"Hard":>8s}')
+        print('  ' + '-' * 50)
+        for cls_name, ap_list in summary_3d_05_all.items():
+            print(f'  {cls_name:<15s}  {ap_list[0]:>8.2f}  {ap_list[1]:>8.2f}  {ap_list[2]:>8.2f}')
+        log_.info(f'3D AP@0.50 Summary: {summary_3d_05_all}')
+    
+    print('=' * 80 + '\n')
+    
+    return all_class_results
 
-def do_repo3d_eval(logger,label_dir,det_dir,calib_dir,de_norm_dir,eval_cls,ap_mode=40):
+def do_repo3d_eval(logger,label_dir,det_dir,calib_dir,de_norm_dir,eval_cls,ap_mode=40,use_roi_filter=True):
 
-    filter_dir = det_dir+'_filter'
-    roi_filter.filter(det_dir,filter_dir,calib_dir)
+    if use_roi_filter:
+        filter_dir = det_dir+'_filter'
+        print('doing roi filter ...')
+        roi_filter.filter(det_dir,filter_dir,calib_dir)
+        eval_dir = filter_dir
+    else:
+        print('skipping roi filter (use_roi_filter=False)')
+        eval_dir = det_dir
+    
     # convert_Pedestrian_ry2GT_4cls.convert_ry2gt(filter_dir,label_dir)
     # ped_dir = filter_dir+"_ped"
-    eval_from_scrach(logger,label_dir,filter_dir,eval_cls,ap_mode=40)
+    all_results = eval_from_scrach(logger,label_dir,eval_dir,eval_cls,ap_mode=40)
+    
+    # 保存评估结果到txt文件
+    import datetime
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    result_file = os.path.join(os.path.dirname(det_dir), f"eval_results_{timestamp}.txt")
+    with open(result_file, "w") as f:
+        f.write("=" * 80 + "\n")
+        f.write(f"Evaluation Results - {timestamp}\n")
+        f.write("=" * 80 + "\n\n")
+        f.write(f"Model: {det_dir.split('/')[-2]}\n")
+        f.write(f"Label Dir: {label_dir}\n")
+        f.write(f"Detection Dir: {eval_dir}\n")
+        f.write(f"Eval Classes: {eval_cls}\n")
+        f.write(f"AP Mode: {ap_mode}\n")
+        f.write(f"ROI Filter: {use_roi_filter}\n\n")
+        
+        if isinstance(all_results, dict) and len(all_results) > 0:
+            # 多类别结果
+            f.write("-" * 80 + "\n")
+            f.write("Detailed Results by Class\n")
+            f.write("-" * 80 + "\n\n")
+            
+            summary_3d_05 = {}
+            summary_3d_07 = {}
+            
+            for cls_name, cls_res in all_results.items():
+                f.write(f"\n{'*' * 20} {cls_name} {'*' * 20}\n")
+                for k, v in cls_res.items():
+                    f.write(f"{k}: {v}\n")
+                
+                if '3d@0.50' in cls_res:
+                    summary_3d_05[cls_name] = cls_res['3d@0.50'][1]
+                if '3d@0.70' in cls_res:
+                    summary_3d_07[cls_name] = cls_res['3d@0.70'][1]
+            
+            # 写入汇总 - 包含所有难度级别
+            f.write("\n" + "=" * 80 + "\n")
+            f.write("3D Detection AP Summary\n")
+            f.write("=" * 80 + "\n")
+            
+            # 收集所有难度的3D AP
+            summary_3d_07_all = {}
+            summary_3d_05_all = {}
+            for cls_name, cls_res in all_results.items():
+                if '3d@0.70' in cls_res:
+                    summary_3d_07_all[cls_name] = cls_res['3d@0.70']
+                if '3d@0.50' in cls_res:
+                    summary_3d_05_all[cls_name] = cls_res['3d@0.50']
+            
+            if summary_3d_07_all:
+                f.write("\n3D AP @ IoU=0.70:\n")
+                f.write(f"  {'Class':<15s}  {'Easy':>8s}  {'Moderate':>8s}  {'Hard':>8s}\n")
+                f.write("  " + "-" * 50 + "\n")
+                for cls_name, ap_list in summary_3d_07_all.items():
+                    f.write(f"  {cls_name:<15s}  {ap_list[0]:>8.2f}  {ap_list[1]:>8.2f}  {ap_list[2]:>8.2f}\n")
+            
+            if summary_3d_05_all:
+                f.write("\n3D AP @ IoU=0.50:\n")
+                f.write(f"  {'Class':<15s}  {'Easy':>8s}  {'Moderate':>8s}  {'Hard':>8s}\n")
+                f.write("  " + "-" * 50 + "\n")
+                for cls_name, ap_list in summary_3d_05_all.items():
+                    f.write(f"  {cls_name:<15s}  {ap_list[0]:>8.2f}  {ap_list[1]:>8.2f}  {ap_list[2]:>8.2f}\n")
+            
+            f.write("=" * 80 + "\n")
+        else:
+            # 单类别结果(向后兼容)
+            f.write("\nResults:\n")
+            if isinstance(all_results, dict):
+                for k, v in all_results.items():
+                    f.write(f"{k}: {v}\n")
+    
+    logger.info(f"Evaluation results saved to: {result_file}")
+    print(f"\nEvaluation results saved to: {result_file}")
+    
+    return all_results
     # run_eval_distance_v2x_ground_4categories.evaluate_SurveillanceCamera(logger = logger, set_type=['car'],coarse_label_path=label_dir,iou_thresh=0.5,result_path=filter_dir,calib_dir=calib_dir,de_norm_dir=de_norm_dir)
     # run_eval_distance_v2x_ground_4categories.evaluate_SurveillanceCamera(logger = logger, set_type=['van'],coarse_label_path=label_dir,iou_thresh=0.5,result_path=ped_dir,calib_dir=calib_dir,de_norm_dir=de_norm_dir)
     # run_eval_distance_v2x_ground_4categories.evaluate_SurveillanceCamera(logger = logger, set_type=['bus'],coarse_label_path=label_dir,iou_thresh=0.5,result_path=ped_dir,calib_dir=calib_dir,de_norm_dir=de_norm_dir)

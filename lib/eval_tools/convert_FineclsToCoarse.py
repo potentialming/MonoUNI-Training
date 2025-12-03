@@ -79,7 +79,7 @@ def parse_kitti_format(line):
                  'size_hwl': [float(val) for val in v[8:11]],
                  # center
                  'location': [float(val) for val in v[11:14]],
-                 # rot angle w.r.t y axis pith, 如何求yawl
+                 # rot angle w.r.t y axis pitch
                  'rotation_y': float(v[14])}
     if len(v) > 15:
         dict_line['score'] = float(v[15])

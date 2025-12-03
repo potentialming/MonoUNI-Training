@@ -40,9 +40,20 @@ class Trainer(object):
         # for eval
         self.eval_cls = cfg['dataset']['eval_cls']
         self.root_dir = cfg['dataset']['root_dir']
-        self.label_dir = os.path.join(self.root_dir, 'label_2_4cls_filter_with_roi_for_eval')
-        self.calib_dir = os.path.join(self.root_dir, 'calib')
-        self.de_norm_dir = os.path.join(self.root_dir, 'denorm')
+        
+        # 根据数据集类型设置路径
+        dataset_type = cfg['dataset'].get('type', 'rope3d').lower()
+        if dataset_type == 'kitti':
+            self.label_dir = os.path.join(self.root_dir, 'training', 'label_2')
+            self.calib_dir = os.path.join(self.root_dir, 'training', 'calib')
+            self.de_norm_dir = os.path.join(self.root_dir, 'training', 'denorm')
+        else:
+            self.label_dir = os.path.join(self.root_dir, 'label_2_4cls_filter_with_roi_for_eval')
+            self.calib_dir = os.path.join(self.root_dir, 'calib')
+            self.de_norm_dir = os.path.join(self.root_dir, 'denorm')
+        
+        # 读取use_roi_filter配置
+        self.use_roi_filter = cfg['tester'].get('use_roi_filter', True)
         
         # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.class_name = test_loader.dataset.class_name
@@ -247,7 +258,8 @@ class Trainer(object):
             self.calib_dir,
             self.de_norm_dir,
             self.eval_cls,
-            ap_mode=40)
+            ap_mode=40,
+            use_roi_filter=self.use_roi_filter)
         return Car_res
            
                 

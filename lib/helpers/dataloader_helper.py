@@ -1,6 +1,7 @@
 import numpy as np
 from torch.utils.data import DataLoader
 from lib.datasets.rope3d import Rope3D
+from lib.datasets.kitti import KITTI
 
 # init datasets and dataloaders
 def my_worker_init_fn(worker_id):
@@ -26,8 +27,27 @@ def build_dataloader(cfg):
                                  shuffle=False,
                                  pin_memory=True,
                                  drop_last=False)
-        return train_loader, val_loader,val_loader
+        return train_loader, val_loader, val_loader
+    
+    # --------------  build KITTI dataset -----------------
+    elif cfg['type'] == 'kitti':
+        train_set = KITTI(root_dir=cfg['root_dir'], split='train', cfg=cfg)
+        train_loader = DataLoader(dataset=train_set,
+                                  batch_size=cfg['batch_size'],
+                                  num_workers=2,
+                                  worker_init_fn=my_worker_init_fn,
+                                  shuffle=True,
+                                  pin_memory=True,
+                                  drop_last=False)
+        val_set = KITTI(root_dir=cfg['root_dir'], split='val', cfg=cfg)
+        val_loader = DataLoader(dataset=val_set,
+                                 batch_size=cfg['batch_size'],
+                                 num_workers=2,
+                                 worker_init_fn=my_worker_init_fn,
+                                 shuffle=False,
+                                 pin_memory=True,
+                                 drop_last=False)
+        return train_loader, val_loader, val_loader
 
     else:
         raise NotImplementedError("%s dataset is not supported" % cfg['type'])
-

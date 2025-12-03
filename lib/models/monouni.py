@@ -8,7 +8,7 @@ from lib.backbones.dlaup import DLAUp
 from lib.backbones.dlaup import DLAUpv2
 
 import torchvision.ops.roi_align as roi_align
-from lib.losses.loss_function import extract_input_from_tensor
+from lib.losses.loss_function import extract_input_from_tensor, _transpose_and_gather_feat, _transpose_and_gather_feat
 from lib.helpers.decode_helper import _topk,_nms
 
 def weights_init_xavier(m):
@@ -145,18 +145,34 @@ class MonoUNI(nn.Module):
             masks = targets['mask_2d']
         else:    #extract test structure in the test (only) and the val mode
             inds,cls_ids = _topk(_nms(torch.clamp(ret['heatmap'].sigmoid(), min=1e-4, max=1 - 1e-4)), K=K)[1:3]
-            masks = torch.ones(inds.size()).type(torch.bool).to(device_id)
+            masks = 'inference'  # Special flag for inference mode
         ret.update(self.get_roi_feat(feat,inds,masks,ret,calibs,coord_ranges,cls_ids,mode, calib_pitch_sin, calib_pitch_cos))
         return ret
 
     def get_roi_feat_by_mask(self,feat,box2d_maps,inds,mask,calibs,coord_ranges,cls_ids,mode, calib_pitch_sin=None, calib_pitch_cos=None):
         BATCH_SIZE,_,HEIGHT,WIDE = feat.size()
         device_id = feat.device
-        num_masked_bin = mask.sum()
+        
+        # Handle inference mode: use integer indices instead of bool mask to avoid NonZero
+        if mask == 'inference':
+            # inds shape is [B, K], we need to process all B*K detections
+            num_masked_bin = inds.numel()  # B * K
+            # Create indices for all detections
+            mask_indices = torch.arange(num_masked_bin, device=device_id)
+        else:
+            num_masked_bin = mask.sum()
+            # Training mode: convert bool mask to indices
+            mask_indices = torch.nonzero(mask, as_tuple=True)[0]
         res = {}
         if num_masked_bin!=0:
             #get box2d of each roi region
-            scale_box2d_masked = extract_input_from_tensor(box2d_maps,inds,mask)
+            # Extract box2d: avoid bool mask indexing in inference mode
+            if mask == "inference":
+                gathered = _transpose_and_gather_feat(box2d_maps, inds)  # [B, K, 5]
+                # Flatten and select using integer indices
+                scale_box2d_masked = gathered.reshape(-1, gathered.shape[-1])[mask_indices]
+            else:
+                scale_box2d_masked = extract_input_from_tensor(box2d_maps,inds,mask)
             #get roi feature
             # print(torch.max(box2d_masked[:,0]))
             # print(torch.max(box2d_masked[:,1]))
@@ -202,7 +218,7 @@ class MonoUNI(nn.Module):
 
             # #concatenate coord maps with feature maps in the channel dim
             cls_hots = torch.zeros(num_masked_bin,self.cls_num).to(device_id)
-            cls_hots[torch.arange(num_masked_bin).to(device_id),cls_ids[mask].long()] = 1.0
+            cls_hots[torch.arange(num_masked_bin).to(device_id),cls_ids.view(-1)[mask_indices].long()] = 1.0
             
             roi_feature_masked = torch.cat([roi_feature_masked_,coord_maps,cls_hots.unsqueeze(-1).unsqueeze(-1).repeat([1,1,7,7])],1)
 

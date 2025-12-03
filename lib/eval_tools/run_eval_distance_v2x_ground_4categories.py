@@ -227,7 +227,7 @@ def parse_kitti_format(line):
                  'size_hwl': [float(val) for val in v[8:11]],
                  # center
                  'location': [float(val) for val in v[11:14]],
-                 # rot angle w.r.t y axis pith, 如何求yawl
+                 # rot angle w.r.t y axis pitch
                  'rotation_y': float(v[14])}
     if len(v) > 15:
         dict_line['score'] = float(v[15])
@@ -372,7 +372,7 @@ def calc_relative_error_of_objects_Surver_ground(res, gt, intrinsics, detail_fil
     dist_gt_res_pi = compute_min_dist(corners_bottom_res_pi, corners_bottom_gt)
     dist_gt_res = np.minimum(dist_gt_res, dist_gt_res_pi)
 
-    relative_error = dist_gt_res / (dist_gt_ori + 1e-7) #平均误差除以深度距离
+    relative_error = dist_gt_res / (dist_gt_ori + 1e-7)  # average error normalized by depth
     detail = [res['id'], res['type'], res['bbox'], res['location'], gt['id'], gt['type'], gt['bbox'], gt['location'], dist_gt_res, dist_gt_ori, relative_error]
     # if config.debug_flag:
     #     fp = open(detail_file, 'a')
