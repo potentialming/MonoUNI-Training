@@ -7,7 +7,7 @@ Derived from the NeurIPS 2023 MonoUNI monocular 3D detector (upstream: https://g
 - Ground-plane utilities: plane-equation scripts, dense depth cube generation, and visualization helpers.
 - ONNX workflow: export script and ONNX evaluation script.
 - TensorRT workflow: export + eval; FP32 is near-lossless, FP16 has some drop and currently little speedup—community help wanted.
-- C++ implementations provided; related repos (to be open-sourced): [monouni_cpp_onnx](https://github.com/monouni_cpp_onnx), [monouni_cpp_trt](https://github.com/monouni_cpp_trt).
+- C++ implementations provided; related repos: [monouni_cpp_onnx](https://github.com/potentialming/monouni_cpp_onnx), [monouni_cpp_trt](https://github.com/potentialming/monouni_cpp_trt).
 
 ## Quick start (Python)
 ```bash
